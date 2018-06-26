@@ -75,13 +75,17 @@ FacebookInsightStream.prototype._init = function (callback) {
     var options = this.options;
 
     // building url pattern for all the request
-    var until = Date.now();
-    var since = new Date();
-    since = since.setDate(since.getDate() - options.pastdays)
+    var until = new Date(options.until);
+    var since = new Date(options.since);
+    var daysUntil = Date.now();
+    var daysSince = new Date();
+    daysSince.setDate(daysSince.getDate() - options.pastdays);
 
     // fb ask for timestamp in seconds
     until = Math.round(until / 1000);
     since = Math.round(since / 1000);
+    daysUntil = Math.round(daysUntil / 1000);
+    daysSince = Math.round(daysSince / 1000);
 
     var path = [
         BASEURL,
@@ -92,15 +96,26 @@ FacebookInsightStream.prototype._init = function (callback) {
 
     var hasEvents = options.events && options.events.length;
     var breakdowns = options.breakdowns;
+    var hasDateRange = options.since && options.until;
+    var hasPastDays = options.pastdays != null;
 
     let queryObj = {
-        since: options.pastdays ? since : '',
-        until: until,
         period: options.period,
         access_token: options.token,
         event_name: hasEvents ? '{ev}' : '',
         aggregateBy: options.aggregate ? '{agg}' : ''
     }
+
+    // Custom date range will have precedence over pastdays if defined
+    if (hasDateRange) {
+        queryObj.since = since
+        queryObj.until = until
+    }
+    else if (hasPastDays) {
+        queryObj.since = options.pastdays ? daysSince : ''
+        queryObj.until = daysUntil
+    }
+
     // Build a query string from the object keys
     let query = Object.keys(queryObj).map(key => {
         return `${key}=${queryObj[key]}`

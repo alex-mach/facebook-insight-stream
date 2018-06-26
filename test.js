@@ -1,212 +1,242 @@
-var assert = require( "assert" );
-var request = require( "request" );
-var sinon = require( "sinon" );
-var Promise = require( "bluebird" );
+var assert = require("assert");
+var request = require("request");
+var sinon = require("sinon");
+var Promise = require("bluebird");
 const queryString = require('querystring')
-var FacebookInsightStream = require( "./index" );
+var FacebookInsightStream = require("./index");
 
 var BASEURL = "https://graph.facebook.com/";
-var METRICS = require( "./metric-list" );
+var METRICS = require("./metric-list");
 
 var req_get = request.get;
 let calledUrl
 
-describe( "Skip missing data", function () {
+describe("Skip missing data", function () {
     var result = {};
     var source = {
-        apps: [ 'myApp' ],
+        apps: ['myApp'],
         ignoreMissing: true
     }
     var _err = { message: 'skip error', code: 100 };
-    var response = { "myApp": { error: _err, name: "myApp", data: dataGenerator( 1, null ) } }
+    var response = { "myApp": { error: _err, name: "myApp", data: dataGenerator(1, null) } }
 
-    before( initialize( result, response, source ) )
-    after( reset )
+    before(initialize(result, response, source))
+    after(reset)
 
-    it( 'Skip missing data', function () {
-        var dataSize = Object.keys( result.data[ 0 ] ).length;
+    it('Skip missing data', function () {
+        var dataSize = Object.keys(result.data[0]).length;
         // the data size should be as the size of
         // metrics + 2 columns ( date, name, id excluding the first metric )
-        assert.equal( dataSize, METRICS.length + 2 );
-        assert.equal( result.data.length, 1 )
+        assert.equal(dataSize, METRICS.length + 2);
+        assert.equal(result.data.length, 1)
     })
 })
 
-describe( "Skip missing item", function () {
+describe("Skip missing item", function () {
     var result = {};
     var source = {
-        apps: [ 'myApp' ]
+        apps: ['myApp']
     }
     var _err = { message: 'skip error', code: 3001 };
-    var response = { "myApp": { error: _err, name: "myApp", data: dataGenerator( 1, null ) } }
+    var response = { "myApp": { error: _err, name: "myApp", data: dataGenerator(1, null) } }
 
-    before( initialize( result, response, source ) )
-    after( reset )
+    before(initialize(result, response, source))
+    after(reset)
 
-    it( 'Skip missing item', function () {
-        var dataSize = Object.keys( result.data[ 0 ] ).length;
+    it('Skip missing item', function () {
+        var dataSize = Object.keys(result.data[0]).length;
         // the data size should be as the size of
         // metrics + 2 columns ( date, name, id excluding the first metric )
-        assert.equal( dataSize, METRICS.length + 2 );
-        assert.equal( result.data.length, 1 )
+        assert.equal(dataSize, METRICS.length + 2);
+        assert.equal(result.data.length, 1)
     })
 })
 
-describe( "error", function () {
+describe("error", function () {
     var result = {};
     var source = {
-        apps: [ "myApp" ],
+        apps: ["myApp"],
     }
     var _err = { message: "test error" };
     var response = { "myApp": { error: _err, name: "myApp" } }
 
-    before( initialize( result, response, source ) )
-    after( reset )
+    before(initialize(result, response, source))
+    after(reset)
 
-    it( "sould emit error", function () {
-        assert.equal( result.error.message, "test error" )
+    it("sould emit error", function () {
+        assert.equal(result.error.message, "test error")
     })
 })
 
-describe( "retry", function () {
+describe("retry", function () {
     var result = {};
     var source = {
-        apps: [ 'myApp' ],
+        apps: ['myApp'],
     }
     var _err = { message: 'retryError' };
-    var response = { "myApp": { error: _err, name: "myApp", data: dataGenerator( 1, null ) } }
+    var response = { "myApp": { error: _err, name: "myApp", data: dataGenerator(1, null) } }
 
-    before( initialize( result, response, source ) )
-    after( reset )
+    before(initialize(result, response, source))
+    after(reset)
 
-    it( 'retry after specified error', function () {
-        var dataSize = Object.keys( result.data[ 0 ] ).length;
+    it('retry after specified error', function () {
+        var dataSize = Object.keys(result.data[0]).length;
         // the data size should be as the size of metrics + 3 columns ( date, name, id )
-        assert.equal( dataSize, METRICS.length + 3 );
-        assert.equal( result.data.length, 1 )
+        assert.equal(dataSize, METRICS.length + 3);
+        assert.equal(result.data.length, 1)
     })
 })
 
-describe( "progress", function () {
+describe("progress", function () {
     var result = {};
     var source = {
-        apps: [ "myApp" ],
+        apps: ["myApp"],
     };
-    var response = { "myApp": { data: dataGenerator( 1, null ), name: "myApp" } }
+    var response = { "myApp": { data: dataGenerator(1, null), name: "myApp" } }
 
-    before( initialize( result, response, source ) )
-    after( reset )
+    before(initialize(result, response, source))
+    after(reset)
 
-    it( "should emit progress", function () {
-        assert.equal( result.progress.total, 1 );
-        assert.equal( result.progress.loaded, 1 );
-        assert.equal( result.progress.message, "{{remaining}} apps remaining" )
+    it("should emit progress", function () {
+        assert.equal(result.progress.total, 1);
+        assert.equal(result.progress.loaded, 1);
+        assert.equal(result.progress.message, "{{remaining}} apps remaining")
 
     })
 })
 
-describe( "empty metric", function () {
+describe("empty metric", function () {
     var result = {};
     var source = {
-        apps: [ "myApp" ],
+        apps: ["myApp"],
     }
 
-    var response = { "myApp": { data: dataGenerator( 1, "api_calls" ), name: "myApp" } }
+    var response = { "myApp": { data: dataGenerator(1, "api_calls"), name: "myApp" } }
 
-    before( initialize( result, response, source ) )
-    after( reset )
+    before(initialize(result, response, source))
+    after(reset)
 
-    it( "should read all the metrics except api_calls", function () {
-        var row = result.data[ 0 ];
+    it("should read all the metrics except api_calls", function () {
+        var row = result.data[0];
 
-        assert.equal( row[ "api_call" ], undefined );
-        assert.equal( Object.keys( row ).length, 51 );
+        assert.equal(row["api_call"], undefined);
+        assert.equal(Object.keys(row).length, 51);
     })
 
 })
 
-describe( "appName and appId", function () {
+describe("appName and appId", function () {
     var result = {};
     var source = {
-        apps: [ "someId" ],
+        apps: ["someId"],
     }
 
-    var response = { "someId": { data: dataGenerator( 1, null ), name: "myApp" } }
+    var response = { "someId": { data: dataGenerator(1, null), name: "myApp" } }
 
-    before( initialize( result, response, source ) )
-    after( reset )
+    before(initialize(result, response, source))
+    after(reset)
 
-    it( "sould add appName and appId to each row", function () {
-        var row = result.data[ 0 ];
+    it("sould add appName and appId to each row", function () {
+        var row = result.data[0];
 
-        assert.equal( row[ "appName" ], "myApp" );
-        assert.equal( row[ "appId" ], "someId" );
+        assert.equal(row["appName"], "myApp");
+        assert.equal(row["appId"], "someId");
     })
 })
 
-describe( "collect", function () {
+describe("collect", function () {
     var result = {};
     var source = {
-        apps: [ "myApp1", "myApp2" ],
+        apps: ["myApp1", "myApp2"],
     }
 
     var response = {
-        "myApp1": { data: dataGenerator( 100, null ), name: "myApp1" },
-        "myApp2": { data: dataGenerator( 100, null ), name: "myApp2" }
+        "myApp1": { data: dataGenerator(100, null), name: "myApp1" },
+        "myApp2": { data: dataGenerator(100, null), name: "myApp2" }
     }
 
-    before( initialize( result, response, source ) )
-    after( reset )
+    before(initialize(result, response, source))
+    after(reset)
 
-    it( "should read 200 rows for two apps", function() {
-        assert.equal( result.data.length, 200 );
-        assert.equal( result.data[ 0 ].appName, "myApp2" );
-        assert.equal( result.data[ 100 ].appName, "myApp1" );
+    it("should read 200 rows for two apps", function () {
+        assert.equal(result.data.length, 200);
+        assert.equal(result.data[0].appName, "myApp2");
+        assert.equal(result.data[100].appName, "myApp1");
     })
 })
 
-describe( "Fetch beginning of time", function () {
+describe("Fetch beginning of time", function () {
     var result = {};
     var source = {
-        apps: [ 'myApp' ],
+        apps: ['myApp'],
         ignoreMissing: true
     }
 
-    var response = { "myApp": { error: {}, name: "myApp", data: dataGenerator( 1, null ) } }
+    var response = { "myApp": { error: {}, name: "myApp", data: dataGenerator(1, null) } }
 
-    before( initialize( result, response, source, true ) )
-    after( reset )
+    before(initialize(result, response, source, true))
+    after(reset)
 
-    it( 'Fetch insights from beginning of time', function () {
+    it('Fetch insights from beginning of time', function () {
         const parts = calledUrl.split('?')
         const parsed = queryString.parse(parts[1])
         assert.equal(Boolean(parsed.since), false)
     })
 })
 
-describe( "Fetch x Days ago", function () {
+describe("Fetch x Days ago", function () {
     var result = {};
     var source = {
-        apps: [ 'myApp' ],
+        apps: ['myApp'],
         ignoreMissing: true
     }
 
-    var response = { "myApp": { error: {}, name: "myApp", data: dataGenerator( 1, null ) } }
+    var response = { "myApp": { error: {}, name: "myApp", data: dataGenerator(1, null) } }
 
-    before( initialize( result, response, source ) )
-    after( reset )
+    before(initialize(result, response, source))
+    after(reset)
 
-    it( 'Fetch insights for past x days', function () {
+    it('Fetch insights for past x days', function () {
         const parts = calledUrl.split('?')
         const parsed = queryString.parse(parts[1])
         assert.equal(Boolean(parsed.since), true)
     })
 })
 
-describe( 'Multiple access tokens', function () {
+describe("Fetch date range", function () {
+    // Test date range between today and 30 days ago
+    var since = new Date();
+    var until = Date.now();
+    since = since.setDate(since.getDate() - 30);
+
+    var result = {};
+    var source = {
+        apps: ['myApp'],
+        ignoreMissing: true,
+        since: since,
+        until: until
+    }
+
+    var response = { "myApp": { error: {}, name: "myApp", data: dataGenerator(1, null) } }
+
+    before(initialize(result, response, source))
+    after(reset)
+
+    it('Fetch insights between start and end dates', function () {
+        var expectedSince = String(Math.round(source.since / 1000));
+        var expectedUntil = String(Math.round(source.until / 1000));
+
+        const parts = calledUrl.split('?')
+        const parsed = queryString.parse(parts[1])
+        assert.equal(parsed.since, expectedSince)
+        assert.equal(parsed.until, expectedUntil)
+    })
+})
+
+describe('Multiple access tokens', function () {
     var sandbox = sinon.sandbox.create()
     var source = {
-        apps: [{id: 'myApp1', token: 'tok1'}, {id: 'myApp2', token: 'tok2'}],
+        apps: [{ id: 'myApp1', token: 'tok1' }, { id: 'myApp2', token: 'tok2' }],
     }
     var stream;
     var options = {
@@ -218,36 +248,36 @@ describe( 'Multiple access tokens', function () {
     }
 
     beforeEach(() => {
-        stream = new FacebookInsightStream( options )
+        stream = new FacebookInsightStream(options)
     })
     afterEach(() => {
         sandbox.restore()
     })
 
-    it( 'init each item with its own token', function(done) {
+    it('init each item with its own token', function (done) {
         let requests = []
         let initItemStub = sandbox.stub(stream, '_initItem').callsFake(item => {
             requests.push(item)
             return Promise.resolve()
         })
-        let ds  = []
-        stream.on( 'data', d => ds.push(d) )
-            .on( 'end', function () {
+        let ds = []
+        stream.on('data', d => ds.push(d))
+            .on('end', function () {
                 let tokens = new Set(requests.map(req => req.token))
                 assert.equal(requests.length, tokens.size)
                 done()
             })
     })
 
-    it( 'uses item token', function() {
+    it('uses item token', function () {
         let token = 'thetoken'
         let calledUrl = null
         sandbox.stub(FacebookInsightStream, 'apiCall').callsFake(url => {
             calledUrl = url
-            return Promise.resolve([null,'{"data":{}}']);
+            return Promise.resolve([null, '{"data":{}}']);
         })
         stream.url = 'https://fb.com/v2.10/123?access_token=&agg=oog&foo=bar'
-        return stream._collect([], {token: token}, {}, [{}])
+        return stream._collect([], { token: token }, {}, [{}])
             .then(() => {
                 assert(calledUrl.indexOf(token) > -1)
             })
@@ -256,45 +286,47 @@ describe( 'Multiple access tokens', function () {
 })
 
 
-function initialize( result, response, source, fetchBOT ) {
+function initialize(result, response, source, fetchBOT) {
 
     result.batchCount = 0;
 
-    return function ( done ) {
+    return function (done) {
 
-        request.get = function ( url, callback ) {
+        request.get = function (url, callback) {
             var metric;
             calledUrl = url
-            url = url.split( BASEURL )[ 1 ];
-            var params = url.split( "?" )[ 0 ].split( "/" );
-            var app = params[ 1 ];
-            var metric = params[ 3 ];
-            var appData = response[ app ].data;
-            var appName = response[ app ].name;
-            var appError = response[ app ].error;
+            url = url.split(BASEURL)[1];
+            var params = url.split("?")[0].split("/");
+            var app = params[1];
+            var metric = params[3];
+            var appData = response[app].data;
+            var appName = response[app].name;
+            var appError = response[app].error;
             var res;
 
             //we are in the get apps request
-            if ( app == "me" ) {
-                res = { data: response[ app ] }
+            if (app == "me") {
+                res = { data: response[app] }
             }
             // if there is no metric, we are in the first request so returning the name
-            else if ( ! metric ) {
+            else if (!metric) {
                 res = { name: appName };
-            } else if ( appError ) {
+            } else if (appError) {
                 res = { error: appError };
-                response[ app ].error = null;
+                response[app].error = null;
             } else {
-                res = { data: appData[ metric ] }
+                res = { data: appData[metric] }
             }
 
-            res = JSON.stringify( res )
+            res = JSON.stringify(res)
 
-            callback( null, { 1: res } )
+            callback(null, { 1: res })
         }
 
         var options = {
             pastdays: fetchBOT ? undefined : "30",
+            since: source.since,
+            until: source.until,
             node: source.node || 'app',
             period: "daily",
             metrics: METRICS,
@@ -302,55 +334,55 @@ function initialize( result, response, source, fetchBOT ) {
             ignoreMissing: source.ignoreMissing
         }
 
-        FacebookInsightStream.prototype.handleError = function ( error, retry ) {
-            if ( error.message === 'retryError' ) {
+        FacebookInsightStream.prototype.handleError = function (error, retry) {
+            if (error.message === 'retryError') {
                 return retry()
             } else {
-                this.emit( 'error', error );
+                this.emit('error', error);
             }
         }
 
-        var testStream = new FacebookInsightStream( options )
-        .on( "data", function ( chunk ) {
-            result.data || ( result.data = [] );
-            result.data = result.data.concat( chunk )
-        })
-        .on( "error", function ( error ) {
-            result.error || ( result.error = error );
-            done();
-            done = function () {};
-        })
-        .on( "progress", function ( progress ) {
-            result.progress = progress;
-        })
-        .on( "end", function () { done() } )
+        var testStream = new FacebookInsightStream(options)
+            .on("data", function (chunk) {
+                result.data || (result.data = []);
+                result.data = result.data.concat(chunk)
+            })
+            .on("error", function (error) {
+                result.error || (result.error = error);
+                done();
+                done = function () { };
+            })
+            .on("progress", function (progress) {
+                result.progress = progress;
+            })
+            .on("end", function () { done() })
 
         result.stream = testStream;
     }
 }
 
-function reset () {
+function reset() {
     request.get = req_get;
 }
 
 // generate data for all the metrics, unless recieved metricname to keep empty
-function dataGenerator ( size, emptyMetric, name ) {
+function dataGenerator(size, emptyMetric, name) {
     var data = {};
-    METRICS.forEach( function ( metric ) {
+    METRICS.forEach(function (metric) {
         var values = [];
 
-        for ( var i = 1; i <= size; i++ ) {
-            values.push( {
+        for (var i = 1; i <= size; i++) {
+            values.push({
                 //nuiqe date for each row
-                end_time: "some_date-" + i ,
+                end_time: "some_date-" + i,
                 value: i,
             })
         }
 
-        data[ metric ] = []
+        data[metric] = []
 
-        if ( metric != emptyMetric ) {
-            data[ metric ].push( {
+        if (metric != emptyMetric) {
+            data[metric].push({
                 name: metric,
                 values: values,
             })
